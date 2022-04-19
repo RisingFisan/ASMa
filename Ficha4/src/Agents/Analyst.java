@@ -1,9 +1,11 @@
 package Agents;
 
 import Classes.Report;
+import jade.core.AID;
 import jade.core.Agent;
 import jade.core.ContainerID;
 import jade.core.Location;
+import jade.core.behaviours.CyclicBehaviour;
 import jade.core.behaviours.TickerBehaviour;
 import jade.domain.DFService;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
@@ -15,10 +17,26 @@ import jade.lang.acl.UnreadableException;
 import java.util.ArrayList;
 
 public class Analyst extends Agent {
+    protected ArrayList<Report> reports = new ArrayList<>();
+
     protected void setup() {
         super.setup();
 
         this.addBehaviour(new Analyze(this, 10000));
+    }
+
+    private class Receive extends CyclicBehaviour {
+
+        @Override
+        public void action() {
+            ACLMessage reply = receive();
+            try {
+                Report r = (Report) reply.getContentObject();
+                reports.add(r);
+            } catch (UnreadableException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     private class Analyze extends TickerBehaviour {
@@ -30,32 +48,16 @@ public class Analyst extends Agent {
         @Override
         protected void onTick() {
             String[] containers = {"Container1", "Container2", "Container3"};
-            ArrayList<Report> reports = new ArrayList<>();
             for(String c : containers) {
                 ContainerID destination = new ContainerID();
                 destination.setName(c);
 
                 myAgent.doMove(destination);
 
-                DFAgentDescription template = new DFAgentDescription();
-                ServiceDescription sd = new ServiceDescription();
-                sd.setType("seller");
-                template.addServices(sd);
-
-                try {
-                    DFAgentDescription[] result = DFService.search(myAgent, template);
-                    if(result.length > 0) {
-                        ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
-                        msg.addReceiver(result[0].getName());
-                        myAgent.send(msg);
-
-                        ACLMessage reply = receive();
-                        Report r = (Report) reply.getContentObject();
-                        reports.add(r);
-                    }
-                } catch (FIPAException | UnreadableException e) {
-                    throw new RuntimeException(e);
-                }
+                ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
+                AID provider = new AID("Seller" + c.charAt(c.length() - 1), AID.ISLOCALNAME);
+                msg.addReceiver(provider);
+                myAgent.send(msg);
             }
 
             ContainerID destination = new ContainerID();
@@ -65,6 +67,7 @@ public class Analyst extends Agent {
             for(int i = 0; i < reports.size(); i++) {
                 System.out.println("Container" + i + 1 + "\n" + reports.get(i).toString());
             }
+            reports.clear();
         }
     }
 }

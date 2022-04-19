@@ -103,7 +103,8 @@ public class Seller extends Agent {
                         throw new RuntimeException(e);
                     }
                 } else if (msg.getPerformative() == ACLMessage.INFORM) {
-                    ACLMessage reply = new ACLMessage(ACLMessage.INFORM);
+                    ACLMessage reply = msg.createReply();
+                    reply.setPerformative(ACLMessage.CONFIRM);
 
                     Map.Entry<String, Integer> e = sold.entrySet().stream().sorted((e1, e2) -> e2.getValue() - e1.getValue()).findFirst().get();
                     Report r = new Report(totalProfit, totalProfit / buyers, e.getKey(), e.getValue());
